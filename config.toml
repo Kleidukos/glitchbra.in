@@ -1,0 +1,42 @@
+baseurl = "https://glitchbra.in" # Controls base URL
+languageCode = "en-UK" # Controls site language
+# title = "Short-circuits and digressions" # Homepage title and page title suffix
+paginate = 20 # Number of posts to show before paginating
+theme = "hello-friend-ng" # Set default theme
+enableRobotsTXT = true # Suggested, enable robots.txt file
+SectionPagesMenu = "main" # Enable menu system for lazy bloggers
+footnoteReturnLinkContents = "↩" # Provides a nicer footnote return link
+
+[params]
+  defaultTheme = "dark"
+  homeSubTitle = "Short-circuits and digressions"
+  customCSS = ["/css/tooltip.css"]
+  [portrait]
+    path = "/Hecate-yellow.png"
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+[[params.social]]
+  name = "twitter"
+  url  = "https://twitter.com/TechnoEmpress"
+[[params.social]]
+  name = "github"
+  url  = "https://github.com/Kleidukos"
+[[params.social]]
+  name = "pleroma"
+  url  = "https://pleroma.fr/hecate"
+[[params.social]]
+  name = "ko-fi"
+  url  = "https://ko-fi.com/HecateMoonlight"
+
+[languages]
+  [languages.en]
+    title = "Hécate's blog"
+    subtitle = "Short-circuits and digessions"
+    keywords = ""
+    readOtherPosts = ""
+
+    [languages.en.params.logo]
+      logoText = "cd ~/"
+      logoHomeLink = "/"
