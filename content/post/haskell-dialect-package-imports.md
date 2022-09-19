@@ -1,6 +1,6 @@
 +++
 title = "Package-qualified imports to reduce module hierarchy"
-date = 2022-06-07T7:41:48+02:00
+date = 2022-06-07T07:41:48+02:00
 description = "Today in Hécate's Haskell Dialect: Package-qualified imports to reduce module hierarchy"
 draft = true
 [[copyright]]
@@ -29,7 +29,7 @@ declared as part of this "family" of things that live under the same hierarchy.
 
 However, I will argue that this has the disadvantage of having bloated import statements that take more
 space on the screen to find the root of an identifier than to declare the identifier itself.
-And I am guilty of doing this for some libraries that I publish as well, which is why I'm particuarly
+And I am guilty of doing this for some libraries that I publish as well, which is why I'm particularly
 sensitive to this issue.
 
 There are also nuances to what I am saying here:

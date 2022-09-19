@@ -3,6 +3,8 @@ title = "Servant APIs: My Personal How-to"
 date = 2021-05-08T13:48:59+02:00
 description = "Hécate's guide to making Servant-based APIs"
 draft = true
+categories = ["Tutorials"]
+tags = ["servant", "haskell", "web"]
 [[copyright]]
   owner = "Hécate's blog"
   date = "2021"
@@ -14,31 +16,31 @@ draft = true
 [Servant][servant-url] is a Haskell library providing a DSL to express web APIs in a type-safe manner. You describe your APIs in terms of Haskell
 types (rather than terms), and it enables you to specify what kind of data the endpoints are supposed to take in and give back.
 
-Heavily relying on type aliases and type-level combinators, an API using Servant may look like this:
+Relying on type aliases and type-level combinators, an API using Servant may look like this:
 
 ```haskell
--- API type definition as a tree
+-- API type definition as a type
 type UserAPI = "users"  :> Get '[JSON] [User]
            :<|> "albert" :> Get '[JSON] User
            :<|> "isaac"  :> Get '[JSON] User
 
--- Type-safe implementation of said API
+-- Implementation of said API
 server :: Server UserAPI
-server = return users
-     :<|> return albert
-     :<|> return isaac
+server = pure usersHandler
+     :<|> pure albertHandler
+     :<|> pure isaacHandler
 
 -- Handlers for each route declared
-isaac :: User
-isaac = User "Isaac Newton" 372 "isaac@newton.co.uk"
+isaacHandler :: User
+isaacHandler = User "Isaac Newton" 372 "isaac@newton.co.uk"
                 (fromGregorian 1683 3 1)
 
-albert :: User
-albert = User "Albert Einstein" 136 "ae@mc2.org"
+albertHandler :: User
+albertHandler = User "Albert Einstein" 136 "ae@mc2.org"
                 (fromGregorian 1905 12 1)
 
-users :: [User]
-users = [isaac, albert]
+usersHandler :: [User]
+usersHandler = [isaac, albert]
 ```
 
 _(taken from the [official Servant tutorial][tutorial])_
@@ -47,15 +49,40 @@ _(taken from the [official Servant tutorial][tutorial])_
 
 ## Beyond the basics
 
-This is a very basic way to declare your APIs, and I think that while the tutorial shows the basics of the library quite well, it is a bit lightweight on a
-combination of feature in Servant that I find utterly indispensible:
+This is a basic way to declare your APIs, and I think that while the tutorial shows the basics of the library quite well.
 
-* Generics
+Now, let us explore a combination of features in Servant that I find utterly indispensible:
+
+* Named Routes
 * Custom Monad
 * Contexts
 
-Generics are an alternative way to specify Servant APIs through the use of a record of handlers, rather than a type-level tree of
-combinators. Nesting sub-APIs in records of functions provides us with a cleaner way to organise our APIs. 
+_Named Routes_ are an alternative way to specify Servant APIs through the use of a record of handlers, rather than a type-level tree of
+combinators. Nesting sub-APIs in records of functions provides us with a cleaner way to organise our APIs:
+
+```Haskell
+
+type UserAPI = NamedRoutes UserAPI'
+
+data UserAPI' mode = UserAPI'
+  { users :: mode :- "users" :> Get '[JSON] [User]
+  , albert :: mdoe :- "albert" :> Get '[JSON] User
+  , isaac :: mdoe :- "isaac" :> Get '[JSON] User
+  }
+  deriving stock (Generic)
+
+server :: Server UserAPI
+server = UserAPI' 
+        { users = usersHandler
+        , albert = albertHandler
+        , isaac = isaacHandler
+        }
+
+usersHandler  :: Server UserAPI 
+usersHandler = 
+isaacHandler  :: Server UserAPI 
+albertHandler :: Server UserAPI 
+```
 
 A custom monad can be used to give the handlers access to some piece of information that they will inevitably use. I am talking here about some data taken
 from the outside at start-up time, or maybe an IORef pointing to a mutable store that handles user sessions. The data stored here should help with the

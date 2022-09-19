@@ -2,3 +2,4 @@ public
 resources
 Session.vim
 tags
+.hugo_build.lock

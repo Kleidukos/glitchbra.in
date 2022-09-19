@@ -11,6 +11,7 @@ footnoteReturnLinkContents = "↩" # Provides a nicer footnote return link
   defaultTheme = "dark"
   homeSubTitle = "Short-circuits and digressions"
   customCSS = ["/css/tooltip.css"]
+  footerRight = "<a href=\"https://cs-web.swan.ac.uk/~pierrepradic/\"> <~</a> Webring du Brocoli <a href=\"https://www.zapashcanon.fr/\"> ~></a>"
   [portrait]
     path = "/Hecate-yellow.png"
 
@@ -30,10 +31,11 @@ footnoteReturnLinkContents = "↩" # Provides a nicer footnote return link
   name = "ko-fi"
   url  = "https://ko-fi.com/HecateMoonlight"
 
+
 [languages]
   [languages.en]
     title = "Hécate's blog"
-    subtitle = "Short-circuits and digessions"
+    subtitle = "Short-circuits and digressions"
     keywords = ""
     readOtherPosts = ""
 
