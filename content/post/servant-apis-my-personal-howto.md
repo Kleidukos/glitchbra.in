@@ -19,7 +19,8 @@ types (rather than terms), and it enables you to specify what kind of data the e
 Relying on type aliases and type-level combinators, an API using Servant may look like this:
 
 ```haskell
--- API type definition as a type
+-- API type definition as a type, with the "choice" (:<|>) operator
+-- to offer multiple endpoints.
 type UserAPI = "users"  :> Get '[JSON] [User]
            :<|> "albert" :> Get '[JSON] User
            :<|> "isaac"  :> Get '[JSON] User
@@ -49,182 +50,46 @@ _(taken from the [official Servant tutorial][tutorial])_
 
 ## Beyond the basics
 
-This is a basic way to declare your APIs, and I think that while the tutorial shows the basics of the library quite well.
-
+This is a basic way to declare your APIs.
 Now, let us explore a combination of features in Servant that I find utterly indispensible:
 
 * Named Routes
 * Custom Monad
 * Contexts
 
+### Named Routes
+
 _Named Routes_ are an alternative way to specify Servant APIs through the use of a record of handlers, rather than a type-level tree of
-combinators. Nesting sub-APIs in records of functions provides us with a cleaner way to organise our APIs:
+combinators. Nesting sub-APIs in records of functions provides us with a cleaner way to organise our APIs, and more importantly: the ablity to name our routes:
 
 ```Haskell
 
 type UserAPI = NamedRoutes UserAPI'
 
 data UserAPI' mode = UserAPI'
-  { users :: mode :- "users" :> Get '[JSON] [User]
+  { users  :: mode :- "users"  :> Get '[JSON] [User]
   , albert :: mdoe :- "albert" :> Get '[JSON] User
-  , isaac :: mdoe :- "isaac" :> Get '[JSON] User
+  , isaac  :: mdoe :- "isaac"  :> Get '[JSON] User
   }
   deriving stock (Generic)
 
 server :: Server UserAPI
 server = UserAPI' 
-        { users = usersHandler
+        { users  = usersHandler
         , albert = albertHandler
-        , isaac = isaacHandler
+        , isaac  = isaacHandler
         }
 
 usersHandler  :: Server UserAPI 
-usersHandler = 
 isaacHandler  :: Server UserAPI 
 albertHandler :: Server UserAPI 
 ```
 
+### Custom Monad
+
 A custom monad can be used to give the handlers access to some piece of information that they will inevitably use. I am talking here about some data taken
-from the outside at start-up time, or maybe an IORef pointing to a mutable store that handles user sessions. The data stored here should help with the
-business requirements of your API (storing user sessions' data, database pool, etc)
-
-In Servant 0.5 was introduced the concept of `Context`. A `Context` is a way to pass values to the route combinators. The most popular usage of a
-`Context` is to implement an authentication guard that is used next to route declarations in the API types. Basic Auth, JWT, OAuth are authentication
-schemes that are best implemented through the use of a `Context`.
-
-## Generics
-
-Generics allow us describe APIs in records, and can be seen at work by rewriting the API definition we saw earlier: 
-
-```haskell
-data UserAPI mode = UserAPI
-  { users  :: mode :- "version" :> Get '[JSON] [User]
-  , albert :: mode :- "albert"  :> Get '[JSON] User
-  , isaac  :: mode :- "isaac"   :> Get '[JSON] User
-  } deriving stock Generic
-
-server :: UserAPI (AsServerT APIMonad)
-server = API { users = usersHandler
-             , albert = albertHandler
-             , isaac = isaacHandler
-             }
-
-usersHandler :: APIMonad [User]
-usersHandler = pure [albert, isaac]
-
-albertHandler :: APIMonad User
-albertHandler = pure albert
-
-isaacHandler :: APIMonad User
-isaacHandler = pure isaac
-
-albert :: User
-albert = User "Albert Einstein" 136 "ae@mc2.org"
-                (fromGregorian 1905 12 1)
-
-isaac :: User
-isaac = User "Isaac Newton" 372 "isaac@newton.co.uk"
-                (fromGregorian 1683 3 1)
-```
-
-But API endpoints are scarcely this small. RESTful APIs aim to have trees endpoints for each resources of the system,
-and as such we will not have everything on the top-level. In order to declare API trees with Generics, we proceed this way:
-
-```Haskell
--- In API/Server/User.hs
-
-module API.Server.User
-  ( API
-  , server
-  ) where
-
-import Servant
-import Servant.API.Generic
-import Servant.Server.Generic
-
-import User.Types (User(..))
-
--- | 'mode' can be either a Server or a Client, which is a useful feature in Servant.
-data API' mode = API
-  { albert :: mode :- "albert" :> Get '[JSON] User
-  , isaac  :: mode :- "isaac"  :> Get '[JSON] User
-  } deriving stock Generic
-
--- | We use this type function to produce a type that can be used
--- as a sub-resource.
-type API = ToServantApi API' 
-
-server :: UserAPI (AsServerT APIMonad)
-server = API { users = usersHandler
-             , albert = albertHandler
-             , isaac = isaacHandler
-             }
-
--- Handlers
-
-usersHandler :: APIMonad [User]
-usersHandler = pure [albert, isaac]
-
-albertHandler :: APIMonad User
-albertHandler = pure albert
-
-isaacHandler :: APIMonad User
-isaacHandler = pure isaac
-
-albert :: User
-albert = User "Albert Einstein" 136 "ae@mc2.org"
-                (fromGregorian 1905 12 1)
-
-isaac :: User
-isaac = User "Isaac Newton" 372 "isaac@newton.co.uk"
-                (fromGregorian 1683 3 1)
-```
-
-```Haskell
--- In API/Server.hs
-
-module API.Server where
-
-import Servant
-import Servant.API.Generic
-import Servant.Server.Generic
-
-import qualified API.Server.User as User
-
--- | We declare our API endpoint as depending on another API "server".
-data API mode = API
-  { users :: mode :- "users" :> User.API
-  } deriving stock Generic
-
-runAPI :: AppState -> IO ()
-runAPI state = 
-  app params >>= runSettings warpSettings
-  where warpSettings = setPort (v3Port params) defaultSettings
-
-app :: AppState -> IO Application
-app appState = 
-  pure $ genericServeTWithContext
-          (naturalTransform appState) -- The function that injects
-                                     -- the app state to our handlers
-          server  -- Our routes
-          (genAuthServerContext appState) -- The context generator
-
-server :: API (AsServerT APIMonad)
-server = API { user = User.server }
-
-naturalTransform :: AppState -> APIMonad a -> Handler a
-naturalTransform state v3App =
-  runReaderT v3App state
-
--- | We will see this function later… ;)
-genAuthServerContext :: AppState -> Context '[AuthHandler]
-genAuthServerContext appState = authHandler appState :. EmptyContext
-```
-
-## Custom Monad
-
-The above example shows that your handlers will have a type signature that uses your custom monad.
-But what will our monad look like? We can start simple, and say that:
+from the outside at start-up time, or maybe an [IORef][IORef] pointing to a mutable store that handles user sessions. The data stored here should help with the
+business requirements of your API (storing user sessions' data, a connection pool, etc):
 
 ```haskell
 type APIMonad = ReaderT AppState Handler
@@ -250,14 +115,65 @@ data AppState
 
 ```
 
-Let's use it to print the connection port of the server:
+The `APIMonad` is a type alias over `ReaderT`, so we can transparently use the `asks f` function to select
+a field in the `AppState` record that the Reader holds:
 
 ```haskell
-loggedinHandler :: APIMonad Text
-loggedinHandler = do
+startupPortHandler :: APIMonad Text
+startupPortHandler = do
   port <- asks startupPort
-  pure $ "Connection port is: " <> show port
+  pure $ "Connection port is: " <> display port
 ```
+
+### Context
+
+In Servant 0.5 was introduced the concept of `Context`. A `Context` is a way to pass values to the route combinators. The most popular usage of a
+`Context` is to implement an authentication guard that is used next to route declarations in the API types. Basic Auth, JWT, OAuth are authentication
+schemes that are best implemented through the use of a `Context` (*even if JWT is best not used at all*).
+
+
+```Haskell
+-- In API/Server.hs
+
+module API.Server where
+
+import Servant
+import Servant.API.Generic
+import Servant.Server.Generic
+
+import qualified API.Server.User as User
+
+-- | We declare our API endpoint as depending on another API "server".
+data API mode = API
+  { users :: mode :- "users" :> User.API
+  } deriving stock Generic
+
+runAPI :: AppState -> IO ()
+runAPI state = 
+  app params >>= runSettings warpSettings
+  where warpSettings = setPort (v3Port params) defaultSettings
+
+app :: AppState -> IO Application
+app appState = pure $
+  genericServeTWithContext
+    (naturalTransform appState) -- The function that injects
+                                -- the app state to our handlers
+    server  -- Our routes
+    (genAuthServerContext appState) -- The context generator
+
+server :: API (AsServerT APIMonad)
+server = API { user = User.server }
+
+naturalTransform :: AppState -> APIMonad a -> Handler a
+naturalTransform state v3App =
+  runReaderT v3App state
+
+-- | We will see this function later… ;)
+genAuthServerContext :: AppState -> Context '[AuthHandler]
+genAuthServerContext appState = authHandler appState :. EmptyContext
+```
+
 
 [servant-url]: https://docs.servant.dev/en/stable/
 [tutorial]: https://docs.servant.dev/en/stable/tutorial/Server.html
+[IORef]: https://hackage.haskell.org/package/base/docs/Data-IORef.html#t:IORef

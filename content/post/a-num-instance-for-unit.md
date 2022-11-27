@@ -15,7 +15,7 @@ It all started with a bad pun.
 
 To which fellow Haskeller and known dog-owner Clément Delafargue answered:
 
-{{< tweet 1288139779293491202 >}}
+> sadly, unit does not have a `Num` instance
 
 And needless to say that things went downhill from there.
 
