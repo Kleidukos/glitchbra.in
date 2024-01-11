@@ -38,16 +38,16 @@ But Forth is not simply an RPN language, and you would be mistaken to think it o
 Another example is:
 
 ```Forth
-: addThousand 1000 + ; \ define the word `addThousand` as a function that
-                         \ adds its operand and 1000
+: addThousand 1000 + ; \ define the word `addThousand` as a function
+                       \ that adds its operand and 1000
 10 addThousand         \ 1010
 20                     \ push 20 on top the stack
 +                      \ add 1010 and 20, giving us 1030
 dup                    \ duplicate this value on the stack,
-                        \which now contains [1030, 1030]
+                       \ which now contains [1030, 1030]
 over                   \ copy the second element from the top of the
-                         \ stack to the top of the stack, giving us a
-                         \stack containing [1030, 1030, 1030]
+                       \ stack to the top of the stack, giving us a
+                       \ stack containing [1030, 1030, 1030]
 ```
 
 This simplicity has the advantage of not needing parser combinators such as the Mighty [Megaparsec](https://hackage.haskell.org/package/megaparsec)
@@ -61,14 +61,13 @@ This point of detail might seem useless, but Forth being used and run on extreme
 
 Throughout this tutorial, I will indicate the top of the stack with the convenient `<- Top` marker.  
 I would also like to express my gratitude to [Nick Morgan](https://twitter.com/skilldrick) with his [Easyforth](https://skilldrick.github.io/easyforth/), as well as Richard W.M. Jones' own take on describing [the implementation of a Forth system](https://github.com/nornagon/jonesforth/blob/master/jonesforth.S).  
-If some examples and wording in this series sound similar, it is only because I can only copy the master. :)
+If some examples and wording in this series sound similar, it is only because I can only copy the masters. :)
 
 This series of article will focus on the implementation of a minimal Forth interpreter.
 Additionally, I took advantage of the situation to learn how to use some less *naïve* functional programming techniques, in an incremental way.
 
 * In parts 01 and 02, we implement a state machine that processes the Forth instructions in a very simple way;
-* In parts 03 and 04, the state machine will be refactored into using Monad Tranformers through the [MTL](https://hackage.haskell.org/package/mtl) style,
-  adding IO capabilities to what started as a set of pure functions;
+* In parts 03 and 04, the state machine will be refactored into using an effects system, adding IO capabilities to what started as a set of pure functions;
 * Finally, part 05 will focus on adding new Forth constructs, and allowing the programmer to define their own *words* (variables or functions).
 
 See you [in the next part](/post/write-a-forth-in-haskell-part-01), in which we will see how to implement some of the most common operations on the Forth stack.

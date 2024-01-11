@@ -24,11 +24,12 @@ images = [
 
 ## Bootstrapping
 
-First, let's bootstrap a [stack](https://docs.haskellstack.org/en/stable/README/) project.
-I am using my custom stack template, [ultimaskell](/ultimaskell.hsfiles), which uses the alternative prelude [Relude](https://kowainik.github.io/projects/relude), by the fantastic people at Kowainik, as well as some convenient language extensions.
+Let us create a cabal project:
 
 ```bash
-stack new farth https://glitchbra.in/ultimaskell.hsfiles
+$ cabal init --simple -p forth --cabal-version=3.4 \
+           --language=GHC2021 --libandexe --tests \
+           --test-dir=test forth
 ```
 
 Now, let's open a new file, `src/StateMachine.hs`, and make it a module with the following line:
@@ -38,13 +39,13 @@ module StateMachine where
 ```
 
 Because we need a proper datatype to represent Forth's execution model, I chose to implement it
-with a [Vector](https://hackage.haskell.org/package/vector)-based stack.
+with a [Linked List](https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-List.html)-based stack.
 
 ```Haskell
-import Data.Vector (Vector)
-import qualified Data.Vector as V
+import Data.List (List)
+import Data.List qualified as List
 
-newtype Stack = Stack {getStack :: Vector Integer}
+newtype Stack = Stack {getStack :: List Integer}
   deriving newtype (Show, Eq)
 ```
 

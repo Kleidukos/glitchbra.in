@@ -25,8 +25,8 @@ footnoteReturnLinkContents = "↩" # Provides a nicer footnote return link
   name = "github"
   url  = "https://github.com/Kleidukos"
 [[params.social]]
-  name = "pleroma"
-  url  = "https://pleroma.fr/hecate"
+  name = "mastodon"
+  url  = "https://merveilles.town/@hecate"
 [[params.social]]
   name = "ko-fi"
   url  = "https://ko-fi.com/HecateMoonlight"
