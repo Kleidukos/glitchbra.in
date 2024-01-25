@@ -22,8 +22,7 @@ images = [
 
 ## The usual suspects
 
-In this part, we will go beyond the simple numerical operations, and dive into stack manipulation. And while the title of this section refers to the 1995
-movie, we are not going to deal with Keyser Söze *this* time.
+In this part, we will go beyond the simple numerical operations, and dive into stack manipulation.
 
 ### Dup
 
@@ -40,23 +39,23 @@ we will get the following stack as result:
 1 2 3 3 <- Top
 ```
 
-To add this capability to our interpreter, we need to do two things: The first one is to add this keyword to our `process` function's pattern-matching, and
+To add this capability to our interpreter, we need to do two things: The first one is to add this keyword to our {{% tooltip "`process`" "process :: Stack -> Text -> Stack" %}} function's pattern-matching, and
 the second one is to actually implement it. Let's get to it.
 
 
 ```Haskell
 process :: Stack -> Text -> Stack
-process stack "+"    = add stack
-process stack "-"    = subtraction stack
-process stack "dup"  = dup  stack
+process stack "+" = add stack
+process stack "-" = sub stack
+process stack "dup" = dup stack
 
 -- ...
 
 dup :: Stack -> Stack
-dup stack = push (V.head (getStack stack)) stack
+dup stack = push (List.head (getStack stack)) stack
 ```
 
-As you can seen, this implementation of `dup` doesn't rely on a `pop` function. While this is certainly a questionable choice, I wanted to show what some
+While {{% tooltip "`List.head`" "head :: [a] -> a. ⚠️ This function is partial!" %}} is certainly a questionable choice, I wanted to show what some
 *naïve* implementation could look like.
 
 Next in line are, as advertised…
@@ -117,11 +116,11 @@ Its stack signature is `rot ( n1 n2 n3 -- n2 n3 n1 )`, and it gives you:
 
 Let's get to it.
 
-`drop` is fairly simple to implement, as an operation on a vector.
+`drop` is fairly simple to implement, as an operation on a list.
 
 ```Haskell
 drop :: Stack -> Stack
-drop stack = Stack $ V.drop 1 (getStack stack)
+drop stack = Stack $ List.drop 1 (getStack stack)
 ```
 
 We drop the first element of the stack, which returns a new stack.
@@ -131,25 +130,26 @@ on our stack, it looks like this:
 
 ```Haskell
 swap :: Stack -> Stack
-swap stack = Stack $ (V.reverse elems) <> newStack
+swap stack = Stack $ (List.reverse elems) <> newStack
   where
-    (elems, newStack) = V.splitAt 2 (getStack stack)
+    (elems, newStack) = List.splitAt 2 (getStack stack)
 ```
 
 We get the first two elements of the stack, by effectively splitting the stack at the second position.
-From this operation, we get a `Vector` of size two, that we reverse before concatenating it with the `(<>)` operator.   
+From this operation, we get a `List` of size two, that we reverse before concatenating 
+it with the {{% tooltip "concatenation" "(<>) :: Semigroup a => a -> a -> a" %}} operator.   
 If you know some Ruby or Elixir, it
-is akin to their, respectively, `(<<)` and `(<>)` operators for Strings, except that in Haskell any data structure can implement concatenation with `(<>)`. Even `Vector`.
+is akin to their, respectively, `(<<)` and `(<>)` operators for Strings, except that in Haskell any data structure may implement concatenation with `(<>)`.
 
 
 `over`'s implementation is a bit more explicit.
 
 ```Haskell
 over :: Stack -> Stack
-over stack = Stack $ V.concat [e2, e1, e2, newStack]
+over stack = Stack $ List.concat [e2, e1, e2, newStack]
   where
-    (elems, newStack) = V.splitAt 2 (getStack stack)
-    (e1, e2)          = V.splitAt 1 elems
+    (elems, newStack) = List.splitAt 2 (getStack stack)
+    (e1, e2)          = List.splitAt 1 elems
 ```
 
 By splitting the stack at the right places, we can reorder the elements in a final concatenation.
@@ -158,11 +158,11 @@ In the same vein, here is `rot`'s implementation.
 
 ```Haskell
 rot :: Stack -> Stack
-rot stack = Stack $ V.concat [newHead, newStack]
+rot stack = Stack $ List.concat [newHead, newStack]
   where
-    (elems, newStack) = V.splitAt 3 (getStack stack)
-    [e1, e2, e3]      = V.toList elems
-    newHead           = V.fromList [e3, e1, e2]
+    (elems, newStack) = List.splitAt 3 (getStack stack)
+    [e1, e2, e3]      = List.toList elems
+    newHead           = List.fromList [e3, e1, e2]
 ```
 
 And finally, here is the final form of our `process` function:
@@ -170,14 +170,14 @@ And finally, here is the final form of our `process` function:
 
 ```Haskell
 process :: Stack -> Text -> Stack
-process stack "+"    = add stack
-process stack "-"    = subtraction stack
-process stack "dup"  = dup  stack
+process stack "+" = add stack
+process stack "-" = sub stack
+process stack "dup" = dup  stack
 process stack "drop" = drop stack
 process stack "swap" = swap stack
 process stack "over" = over stack
-process stack "rot"  = rot  stack
-process stack a      = push item stack
+process stack "rot" = rot  stack
+process stack a = push item stack
   where
     item = either (error . pack) fst (parseInt a)
 ```

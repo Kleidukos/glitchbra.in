@@ -20,6 +20,8 @@ This article is the first of a series on the implementation of the [Forth progra
 * [Part 02](/post/write-a-forth-in-haskell-part-02/)
 * [Part 03](/post/write-a-forth-in-haskell-part-03/)
 
+This series of article is about the implementation of a minimal Forth interpreter.
+
 First invented in 1970, Forth has had a long life in several application domains: Space, embedded systems, and even in the FreeBSD bootloader.
 Now, what makes Forth distinctive? Well, in opposition to more popular programming languages, Forth has an execution model that is deeply linked to its syntax.  
 
@@ -39,7 +41,7 @@ Another example is:
 
 ```Forth
 : addThousand 1000 + ; \ define the word `addThousand` as a function
-                       \ that adds its operand and 1000
+                       \ that adds its operand and 1000.
 10 addThousand         \ 1010
 20                     \ push 20 on top the stack
 +                      \ add 1010 and 20, giving us 1030
@@ -61,10 +63,9 @@ This point of detail might seem useless, but Forth being used and run on extreme
 
 Throughout this tutorial, I will indicate the top of the stack with the convenient `<- Top` marker.  
 I would also like to express my gratitude to [Nick Morgan](https://twitter.com/skilldrick) with his [Easyforth](https://skilldrick.github.io/easyforth/), as well as Richard W.M. Jones' own take on describing [the implementation of a Forth system](https://github.com/nornagon/jonesforth/blob/master/jonesforth.S).  
-If some examples and wording in this series sound similar, it is only because I can only copy the masters. :)
+If some examples and wording in this series sound similar, it is because I can only copy the masters.
 
-This series of article will focus on the implementation of a minimal Forth interpreter.
-Additionally, I took advantage of the situation to learn how to use some less *naïve* functional programming techniques, in an incremental way.
+Additionally, I took advantage of the situation to learn myself how to use some less _naïve_ functional programming techniques, in an incremental way.
 
 * In parts 01 and 02, we implement a state machine that processes the Forth instructions in a very simple way;
 * In parts 03 and 04, the state machine will be refactored into using an effects system, adding IO capabilities to what started as a set of pure functions;

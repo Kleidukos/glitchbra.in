@@ -20,7 +20,7 @@ images = [
 * [Part 03](/post/write-a-forth-in-haskell-part-03/) <-
 
 Up until now, the execution of the interpreter was fairly straightforward.  
-We could fold over a string of instructions, applying our `process` function on each token.
+We could fold over a string of instructions, applying our {{% tooltip "`process`" "process :: Stack -> Text -> Stack" %}} function on each token.
 
 ```Haskell
 initStack :: Stack
@@ -41,7 +41,7 @@ IO capabilities.
 
 Operating in a Monad is pretty awesome. You get access to cool functions like `get` and `put` if you are in the
 [`State Monad`](https://hackage.haskell.org/package/mtl-2.2.2/docs/Control-Monad-State-Class.html#t:MonadState), or even proper error
-management mechanisms that do not rely on runtime exceptions, in the case of [`MonadError`](https://hackage.haskell.org/package/mtl-2.2.2/docs/Control-Monad-Except.html)
+management mechanisms that do not rely on runtime exceptions, in the case of the [`Error Monad`](https://hackage.haskell.org/package/mtl-2.2.2/docs/Control-Monad-Except.html)
 But what is better than one monad? Several of them. Hence the expression "Monad Stack". You stack them on top of each-other, so you can enjoy their
 capabilities in the same place.
 In our case, we are interested in two things: state management, and IO. And by IO I mean "being able to output strings", because right now we don't
@@ -79,7 +79,7 @@ Nothing really changes in terms of execution, but now we gain some control over 
 
 ### Combining State and IO
 
-I will go straight to the point : This will be no more complicated than :
+I will go straight to the point : This will be no more complicated than
 
 ```haskell
 MonadState AppState m, MonadIO m
@@ -96,7 +96,7 @@ add = do
   push (element1 + element2)
 ```
 
-_(Don't mind the function body for now, we still have some stuff to cover before attaining this level of care-free declarative programming)_  
+_(Don't mind the function body for now, we still have some stuff to cover before attaining this level of care-free stack programming)_  
 
 Operating in a combination of `MonadState` and `MonadIO` allows us to use IO when needed for side operations like on-disk logging if you want to
 maintain a history of the operations, or even launching nukes on the side.
@@ -107,9 +107,10 @@ maintain a history of the operations, or even launching nukes on the side.
 Our `AppState` will be quite basic, and will grow as we add more features to the interpreter:
 
 ```haskell
-data AppState = AppState { buffer :: [Text]
-                         , stack  :: Stack
-                         } deriving (Show)
+data AppState = AppState
+  { buffer :: [Text]
+  , stack :: Stack
+  } deriving stock (Show)
 ```
 
 `buffer` will contain the forth instructions that are given to the interpreter, and `stack` will be the stack we're operating on.
@@ -120,24 +121,28 @@ We can put this definitions and the other ones in a separates `Types.hs` files:
 -- src/Types.hs
 module Types where
 
-import           Data.Vector     (Vector)
-import qualified Data.Vector     as V
+import Control.Monad.State.Strict (MonadState)
+import Control.Monad.State.Strict qualified as State
+import Data.List (List)
+import Data.List qualified as List
+import Control.Monad.IO.Class (MonadIO)
 
-newtype Stack = Stack {getStack :: Vector Integer}
+newtype Stack = Stack {getStack :: [Integer]}
   deriving newtype (Show, Eq)
 
-data AppState = AppState { buffer :: [Text]
-                         , stack  :: Stack
-                         } deriving (Show)
+data AppState = AppState
+  { buffer :: [Text]
+  , stack :: Stack
+  } deriving stock (Show)
 
 initStack :: Stack
-initStack = Stack V.empty
+initStack = Stack []
 ```
 
 ## Stack operations
 
 Now that we have the state available from the functions that require it,
-it has become possible for us to query it and modify it in a declarative way.
+it has become possible for us to query it and modify it in a cleaner way.
 
 So, let us rework the functions we have implemented in [part 01](/post/write-a-forth-in-haskell-part-01/),
 starting with `add` and `sub`. In the classical Forth fashion, the addition is composed of two `pop`s and a `push`.
@@ -204,12 +209,12 @@ rot = do
 
 ## Let's get poppin'!
 
-Finally. Clean, declarative code to express our operations on the stack.  
+Finally. Clean code to express our operations on the stack.  
 Gone are the size checks on the stack and the manual splitting!
-You can sweep all the nasty, vector-manipulating code we wrote earlier under
+You can sweep all the nasty, list-manipulating code we wrote earlier under
 the rug, because this Dark Age is over. Or is it?
 
-We cannot entirely get rid of "low-level" operations on Vectors.
+We cannot entirely get rid of "low-level" operations on Lists.
 As Fred Hébert says so well, [complexity has to live somwhere](https://ferd.ca/complexity-has-to-live-somewhere.html).
 
 We can't forget it's there but we can manage to centralise it, and this is exactly
@@ -222,24 +227,14 @@ To avoid burdening the reading of the function, a new helper is defined:
 
 ```Haskell
 addToStack :: Integer -> Stack -> Stack
-addToStack element stack = under (V.cons element) stack
+addToStack element (Stack stack) = Stack $ element : stack
 ```
-
-This one makes use of the `under` helper, brought to us by Relude.
-As said at the begining of the series, Relude is an alternative prelude
-that fixes a lot of the inherent issues that people have with the standard Prelude,
-*and* brings its lot of new functions. One of them is
-{{% tooltip "`under`" "under :: forall n a . Coercible a n => (n -> n) -> (a -> a)" %}}
-Through the clever use of {{% tooltip "`coerce`" "coerce :: Coercible a b => a -> b"%}},
-the function allows us to make a transformation on the value wrapped by a newtype.
-And in our case, the transformation is the concatenation of an element to the stack.
-
-But enough with the explanations, here is the code!: 
+and we have `push`:
 
 ```Haskell
 push :: (MonadState AppState m) => Integer -> m ()
 push newElement =
-  modify' (\state ->
+  State.modify' (\state ->
     let newStack = addToStack newElement (stack state)
      in state {stack = newStack})
 ```
@@ -253,9 +248,9 @@ pop = do
   stack' <- gets stack
   if (checkSize 1 stack')
   then do
-    let (hd, tl) = V.splitAt 1 (getStack stack')
+    let (hd, tl) = List.splitAt 1 (getStack stack')
     updateStack (Stack tl)
-    pure $ V.head hd
+    pure $ List.head hd
   else
     error "Stack underflow!"
 ```
@@ -306,7 +301,7 @@ period = do
 to an ASCII char. Thankfully, {{% tooltip "`Data.Char.chr`" "chr :: Int -> Char" %}} has
 our back. We can convert the ASCII code to a character.
 
-However, `chr` takes an `Int`, and we have a Vector full of… `Integer`s! Which
+However, `chr` takes an `Int`, and we have a List full of… `Integer`s! Which
 are not the same thing! Whereas `Integer` is an arbitrary-precision number
 (also called “bigint” in some other languages), `Int` is a signed 64-bit integer.
 There must be a conversion step from one to the other. And there is.
@@ -320,11 +315,20 @@ The documentation says “Conversion from an Integer”, so that must be it.
 Let's try it: 
 
 ```Haskell
-λ❯ fromInteger (3 :: Integer) :: Int
+ghci> fromInteger (3 :: Integer) :: Int
 3
 it :: Int
 ```
 And that is indeed what we want.
+
+But beware, sized integers like `Int` will "loop around" if you reach their limit, which is why
+converting from arbitrarily big numbers to sized-constrained numbers can be a lossy operation:
+
+```haskell
+ghci> fromInteger (9223372036854775802343224 :: Integer) :: Int
+-5656776
+it :: Int
+```
 
 Here is how we are going to do it:
 

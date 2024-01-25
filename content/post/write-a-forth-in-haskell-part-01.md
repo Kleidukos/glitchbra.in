@@ -42,24 +42,23 @@ Because we need a proper datatype to represent Forth's execution model, I chose 
 with a [Linked List](https://hackage.haskell.org/package/base-4.19.0.0/docs/Data-List.html)-based stack.
 
 ```Haskell
-import Data.List (List)
 import Data.List qualified as List
 
-newtype Stack = Stack {getStack :: List Integer}
+newtype Stack = Stack {getStack :: [Integer]}
   deriving newtype (Show, Eq)
 ```
 
-What the last lines means is that we create a new type, a wrapper around
-`Vector Integer`, with a constructor aptly named `Stack`, and an accessor function
+What the above lines mean is that we create a _newtype_, a wrapper around
+`[Integer]`, with a constructor named `Stack`, and an accessor function
 called `getStack`.
-The `deriving newtype` line allows us to have a `Show` and `Eq` instance that
-will use the underlying type (in our case, `Vector Integer`) instead of the wrapper.
+The `deriving newtype` line allows us to inherit the `Show` and `Eq` instances 
+of the underlying type instead of the wrapper's instances.
 
 So what would an empty stack look like? Like this:
 
 ```haskell
 initStack :: Stack
-initStack = Stack V.empty
+initStack = Stack List.empty
 ```
 
 We now need a function that will “process”, so to speak, the different operations we receive from our input:
@@ -80,8 +79,8 @@ from our input and simply push them on the stack, which we will then return.
 
 That being said, we also need a couple of helpers.
 The first one is {{% tooltip "`parseInt`" "parseInt :: Text -> Integer" %}}. We have encountered it in the above `where`-clause.  
-The core of its definition relies on the {{% tooltip "`decimal`" "decimal :: Integral a => Either String (Integer, Text)"%}} function from `Data.Text.Read`,
-as well as {{% tooltip "`pack`" "pack :: String -> Text" %}} from `Data.Text`.
+The core of its definition relies on the {{% tooltip "`decimal`" "decimal :: Integral a => Either String (Integer, Text)"%}} function from [`Data.Text.Read`][Data.Text.Read],
+as well as {{% tooltip "`pack`" "pack :: String -> Text" %}} from [`Data.Text`][Data.Text].
 
 ```Haskell
 import Data.Text.Read (decimal)
@@ -94,12 +93,12 @@ parseInt a = either (error . pack) fst (decimal a)
 ```
 
 However, this one-liner may be quite incomprehensible.
-Here is how we can write this function:
+Here is how we can rewrite this function:
 
 ```Haskell
 parseInt a = 
   case decimal a of
-    Right result   -> fst result
+    Right result -> fst result
     Left  errorMsg -> error $ pack errorMsg
 ```
 
@@ -128,26 +127,23 @@ Terribly unsafe from a types perspective, morally digusting, but we are going to
 At that point, here's what our file looks like:
 
 ```Haskell
-
-module StateMachine (
-  module StateMachine -- We export the whole module
-    )
+module StateMachine where
 
 import Data.Text (pack)
 import Data.Text.Read (decimal)
-import Data.Vector (Vector)
-import qualified Data.Vector as V
+import Data.List (List)
+import qualified Data.List as List
 
-newtype Stack = Stack {getStack :: Vector Integer}
+newtype Stack = Stack {getStack :: [Integer]}
   deriving newtype (Show, Eq)
 
 initStack :: Stack
-initStack = Stack V.empty
+initStack = Stack []
 
 process :: Stack -> Text -> Stack
 process stack "+" = add stack
 process stack "-" = sub stack
-process stack a   = push item stack
+process stack a  = push item stack
   where
     item = parseInt a
 
@@ -164,7 +160,7 @@ parseInt a = either (error . pack) fst (decimal a)
 --       this function   this function  The value
 --       is called on    is called on   to be tested
 --       the value in    the value in
---       the Left        the Right
+--       the `Left`      the `Right`
 ```
 
 ## Addition, subtraction
@@ -176,7 +172,7 @@ The first function, `push`, is implemented as a `cons` operation:
 
 ```Haskell
 push :: Integer -> Stack -> Stack
-push item stack = V.cons item stack
+push item stack = item : stack
 ```
 
 Its famous counterpart `pop` will not be implemented *yet*. 
@@ -188,7 +184,7 @@ add :: Stack -> Stack
 add stack =
   if checkSize 2 stack
   then
-    let (elems, newStack) = V.splitAt 2 (getStack stack)
+    let (elems, newStack) = List.splitAt 2 (getStack stack)
         result = sum elems
      in push result (Stack newStack)
   else
@@ -200,18 +196,17 @@ Which brings us to our next helper: `checkSize`.
 ```Haskell
 checkSize :: Int -> Stack -> Bool
 checkSize requiredSize stack =
-  (length $ getStack stack) >= requiredSize
+  (length (getStack stack)) >= requiredSize
 ```
 
 Fundamentally, we need to be sure that the operation we make is safe at the
-stack level. Size-indexed vectors do require a higher level of type-level programming
-than the one that is required to read this series, and we will have to make do with
-runtime checks.
+stack level. 
 
 Now that we have all the cards, let's combine them.
-First, with the help of {{% tooltip "`V.splitAt`" "Int -> Vector a -> (Vector a, Vector a)" %}}, we grab a 2-tuple of vectors. The first one supposedly contains
+First, with the help of {{% tooltip "`List.splitAt`" "Int -> [a] -> ([a], [a])" %}}, we grab a 2-tuple of lists. The first one supposedly contains
 the first two elements, and the second one has the rest of the stack in it.
-With the help of `checkSize`, we then make sure to only proceed to the actual sum if *and only if* the first vector, `elems`, has two elements.
+
+With the help of {{% tooltip "`checkSize`" "checkSize :: Int -> Stack -> Bool" %}}, we then make sure to only proceed to the actual sum if *and only if* the first list, `elems`, has two elements.
 And finally, we push the result to the stack.
 
 The subtraction function is similar in intent:
@@ -221,24 +216,22 @@ sub :: Stack -> Stack
 sub stack =
   if checkSize 2 stack
   then
-    let (elems, newStack) = V.splitAt 2 (getStack stack)
-        result = sub' $ V.reverse elems
-        sub' = foldl1 (-)
+    let (elems, newStack) = List.splitAt 2 (getStack stack)
+        result = sub' $ List.reverse elems
+        sub' = List.foldl1 (-)
      in push result (Stack newStack)
   else
     error "Stack underflow!"
 ```
 
-With the slight difference that we define our own subtraction function, and we reverse the vector beforehand so we get a correct result.
+With the slight difference that we define our own subtraction function, and we reverse the list beforehand so we get a correct result.
 
 `foldl1` iterates over a container and applies the supplied function (`(-)`) over those elements while keeping an accumulator. By convention, the `1` suffix tells us that
 we do not need to supply a initial accumulator to the recursive function, assuming a non-empty container to start with.  
-You need to import that function from `Data.Foldable`:
-
-```Haskell
-import           Data.Foldable  (foldl1)
-```
 
 So far, we implemented addition and subtraction. Their definion were a bit convoluted,
 unnessarily even, due to a lack of a better abstraction. But be patient.  
 In [part 02](/post/write-a-forth-in-haskell-part-02), we will explore more traditional Forth operations, such as duplication, drop, and rotation, amongst others.
+
+[Data.Text.Read]: https://hackage.haskell.org/package/text-2.1/docs/Data-Text-Read.html
+[Data.Text]: https://hackage.haskell.org/package/text-2.1/docs/Data-Text.html
